@@ -1,0 +1,23 @@
+ * Serving Flask app 'app'
+ * Debug mode: on
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:8000
+ * Running on http://192.168.0.2:8000
+[33mPress CTRL+C to quit[0m
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 264-943-978
+127.0.0.1 - - [11/Oct/2026 11:44:09] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [11/Oct/2026 11:45:31] "GET /scrape HTTP/1.1" 200 -
+127.0.0.1 - - [11/Oct/2026 11:46:51] "GET /map HTTP/1.1" 200 -
+ * Detected change in '/app/scrape_live_nuisances.py', reloading
+[2026-10-11T11:45:23.451647] Fetching live Open311 data from Züri wie neu...
+No new relevant incidents found.
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 264-943-978
+ * Detected change in '/app/scrape_live_nuisances.py', reloading
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 264-943-978
