@@ -9,11 +9,19 @@ Since standard Unity UI does not render HTML/JS, we will use the free, open-sour
 ## 1. Install the Free WebView Plugin
 To fix any `CS0246` errors, you must install the free webview plugin into your Unity 6 project.
 
-1. Download the latest `unity-webview.unitypackage` from the official GitHub releases page:
-   [https://github.com/gree/unity-webview/releases/latest](https://github.com/gree/unity-webview/releases/latest)
-2. In your Unity project, go to **Assets -> Import Package -> Custom Package...**
-3. Select the `unity-webview.unitypackage` you just downloaded.
-4. Leave all boxes checked in the import window and click **Import**.
+1. In Unity, go to **Window -> Package Manager**.
+2. Click the **`+`** button (top left corner) and select **"Add package from git URL..."**.
+3. Paste the following exact URL (including the path parameter) and click **Add**:
+   `https://github.com/gree/unity-webview.git?path=/dist/package`
+
+### 1.5 Fix Assembly References (CS0246 Error)
+Because you installed the plugin via the Package Manager, Unity isolates its scripts into a separate assembly. To allow your scripts to "see" `WebViewObject`, you must link the assemblies:
+1. Go to your `Assets/Scripts` folder (or wherever you placed your `MapAppController.cs` script).
+2. Go to **Assets > Create > Scripting > Assembly Definition** in the top menu bar. Name it `MapAppAssembly`.
+3. Select your new `MapAppAssembly` file.
+4. In the Inspector, under **Assembly Definition References**, click the `+` button.
+5. Click the tiny circle/target icon in the new slot, and select `unity-webview`. (Do NOT type `net.gree.unity-webview`).
+6. Click **Apply** at the bottom of the Inspector.
 
 *(Note: The gree webview plugin relies on a native iOS/Android bridge. You will only see the map when you Build and Run to your Android phone, or run in the Mac/Windows editor if the native binaries are present. It is designed to work flawlessly on the Android device).*
 
