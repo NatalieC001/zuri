@@ -107,9 +107,22 @@ async function loadHistoricalData() {
     }
 }
 
+// Rate Limiting Constants
+const FETCH_COOLDOWN_MS = 60000; // 60 seconds
+let lastFetchTime = 0;
+
 // Fetch live reports
 async function fetchLiveReports() {
+    const now = Date.now();
     const btn = document.getElementById('live-btn');
+
+    // Polite scraping: prevent spamming the API
+    if (now - lastFetchTime < FETCH_COOLDOWN_MS) {
+        const remainingSecs = Math.ceil((FETCH_COOLDOWN_MS - (now - lastFetchTime)) / 1000);
+        alert(`Please wait ${remainingSecs} seconds before fetching again to respect server limits.`);
+        return;
+    }
+
     btn.disabled = true;
     btn.innerText = "Fetching...";
 
@@ -155,8 +168,11 @@ async function fetchLiveReports() {
             renderHeatmap();
             alert(`Found ${newCount} new incident(s) in the Wipkingen area!`);
         } else {
+            alert("No new relevant incidents found.");
             console.log("No new relevant incidents found.");
         }
+
+        lastFetchTime = Date.now(); // Update the successful fetch time
 
     } catch (error) {
         console.error("Failed to fetch live reports:", error);

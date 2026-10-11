@@ -1,20 +1,29 @@
 # Wipkingen Nuisance Tracker - Unity APK Integration Guide
 
-Because the data is small and the Folium logic has been rewritten in pure JavaScript, this map can run **completely independently** on an Android phone as a native APK compiled from Unity, without needing a Python backend!
+Because the data is small and the Folium logic has been rewritten in pure JavaScript, this map can run **completely independently** on an Android phone as a native APK compiled from Unity!
 
-## Prerequisites
-1. **Unity 6** (or any modern Unity version).
-2. A Unity WebView Plugin. (Because standard Unity UI does not render HTML/JS, you need a plugin. The two industry standards are **[Vuplex 3D WebView for Android](https://developer.vuplex.com/)** or **[UniWebView](https://uniwebview.com/)**. This guide uses UniWebView syntax, as it is very popular for 2D mobile apps).
+Since standard Unity UI does not render HTML/JS, we will use the free, open-source **[gree/unity-webview](https://github.com/gree/unity-webview)** plugin to display our Leaflet map.
 
 ---
 
-## Setup Instructions
+## 1. Install the Free WebView Plugin
+To fix any `CS0246` errors, you must install the free webview plugin into your Unity 6 project.
 
-### 1. Place the Assets
+1. Download the latest `unity-webview.unitypackage` from the official GitHub releases page:
+   [https://github.com/gree/unity-webview/releases/latest](https://github.com/gree/unity-webview/releases/latest)
+2. In your Unity project, go to **Assets -> Import Package -> Custom Package...**
+3. Select the `unity-webview.unitypackage` you just downloaded.
+4. Leave all boxes checked in the import window and click **Import**.
+
+*(Note: The gree webview plugin relies on a native iOS/Android bridge. You will only see the map when you Build and Run to your Android phone, or run in the Mac/Windows editor if the native binaries are present. It is designed to work flawlessly on the Android device).*
+
+---
+
+## 2. Place the Map Assets
 Copy the entire `unity_assets` folder from this repository and place its contents directly into your Unity project's `StreamingAssets` folder.
 *(If the folder doesn't exist, create it: `Assets/StreamingAssets/`)*
 
-Your folder structure should look like this:
+Your folder structure **must** look exactly like this:
 ```
 YourUnityProject/
   Assets/
@@ -24,39 +33,61 @@ YourUnityProject/
       historical_data.json
 ```
 
-### 2. Configure Unity for Android
+---
+
+## 3. Configure Unity for Android
 - Open Unity. Go to **File -> Build Settings**.
 - Switch Platform to **Android**.
-- Under **Player Settings -> Internet Access**, ensure it is set to **Require**. (The app needs internet to fetch the live Open311 JSON updates and load the OpenStreetMap map tiles).
+- Go to **Player Settings -> Internet Access** and ensure it is set to **Require**. (The app needs internet to fetch the live Open311 updates and map tiles).
+- In Player Settings, ensure **Write Permission** is set to **External (SDCard)** if prompted, though default usually works for StreamingAssets reading.
 
-### 3. Create the C# WebView Controller
-Create a new C# Script in Unity called `MapAppController.cs`. Attach it to an empty GameObject in your main scene.
+---
 
-Here is the exact code to load your local `index.html` file into the mobile app:
+## 4. Create the C# Controller
+Create a new C# Script in Unity called `MapAppController.cs`.
+Attach this script to an **empty GameObject** in your main scene (e.g., name the GameObject "MapManager").
+
+Copy and paste this exact code. It is designed specifically for the `gree/unity-webview` plugin:
 
 ```csharp
 using UnityEngine;
-// using Vuplex.WebView; // Uncomment if using Vuplex
-// using UniWebView; // Uncomment if using UniWebView
+using System.IO;
 
 public class MapAppController : MonoBehaviour
 {
-    // If using UniWebView:
-    private UniWebView webView;
+    private WebViewObject webViewObject;
 
     void Start()
     {
-        // 1. Create the WebView component
-        var webViewGameObject = new GameObject("UniWebView");
-        webView = webViewGameObject.AddComponent<UniWebView>();
+        // 1. Create the WebViewObject component
+        webViewObject = (new GameObject("WebViewObject")).AddComponent<WebViewObject>();
 
-        // 2. Make it fill the entire screen of the phone
-        webView.ReferenceRectTransform = this.GetComponent<RectTransform>(); // Or specify screen bounds manually
-        webView.Frame = new Rect(0, 0, Screen.width, Screen.height);
+        // 2. Initialize the webview with basic callbacks (optional but good for debugging)
+        webViewObject.Init(
+            cb: (msg) => Debug.Log(string.Format("CallFromJS[{0}]", msg)),
+            err: (msg) => Debug.Log(string.Format("CallOnError[{0}]", msg)),
+            httpErr: (msg) => Debug.Log(string.Format("CallOnHttpError[{0}]", msg)),
+            started: (msg) => Debug.Log(string.Format("CallOnStarted[{0}]", msg)),
+            hooked: (msg) => Debug.Log(string.Format("CallOnHooked[{0}]", msg)),
+            ld: (msg) => {
+                Debug.Log(string.Format("CallOnLoaded[{0}]", msg));
+                // Show the webview once it's fully loaded
+                webViewObject.SetVisibility(true);
+            }
+        );
 
-        // 3. Define the path to the standalone HTML file in StreamingAssets
-        string localUrl = "";
-#if UNITY_ANDROID
+        // 3. Make it fill the entire screen (margins: left, top, right, bottom)
+        webViewObject.SetMargins(0, 0, 0, 0);
+
+        // 4. Define the path to the standalone HTML file in StreamingAssets
+        string localUrl;
+
+#if UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
+        localUrl = "file:///" + Application.streamingAssetsPath.Replace("\\", "/") + "/index.html";
+#elif UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX
+        localUrl = "file://" + Application.streamingAssetsPath + "/index.html";
+#elif UNITY_ANDROID
+        // Android requires a specific format for local streaming assets in gree webview
         localUrl = "file:///android_asset/index.html";
 #elif UNITY_IOS
         localUrl = "file://" + Application.streamingAssetsPath + "/index.html";
@@ -64,16 +95,25 @@ public class MapAppController : MonoBehaviour
         localUrl = "file://" + Application.streamingAssetsPath + "/index.html";
 #endif
 
-        // 4. Load the URL and show it
-        webView.Load(localUrl);
-        webView.Show();
+        // 5. Load the URL
+        webViewObject.LoadURL(localUrl);
+    }
+
+    void OnDestroy()
+    {
+        if (webViewObject != null)
+        {
+            Destroy(webViewObject.gameObject);
+        }
     }
 }
 ```
 
-### 4. Build and Run!
-- Connect your Android phone via USB.
-- In Unity, hit **Build And Run**.
-- Unity will compile the `.apk` file, transfer it to your phone, and install the icon.
-- When you open the app, the C# script instantly mounts a native Android browser instance, points it to the local `index.html` bundle, and Leaflet renders your map flawlessly.
-- Pressing "Refresh Live Data" executes the JavaScript `fetch()` command, directly grabbing the latest reports from the city of Zurich servers.
+---
+
+## 5. Build and Run
+1. Connect your Android phone via USB.
+2. In Unity, hit **File -> Build And Run**.
+3. Unity will compile the `.apk` file and install it on your phone.
+4. When you open the app, it will display the Leaflet heatmap flawlessly.
+5. Pressing "Refresh Live Data" executes the JavaScript `fetch()` command, directly grabbing the latest reports from the city of Zurich!
